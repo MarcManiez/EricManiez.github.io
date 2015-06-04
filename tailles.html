@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body
+{
+  font: 10px sans-serif;
+}
+
+.axis path,
+
+/* little line above x-axis letter */
+.axis line
+{
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.bar
+{
+  fill: orange;
+}
+
+.bar:hover
+{
+  fill: orangered ;
+}
+
+.x.axis path
+{
+  display: none;
+}
+
+/* popup */
+.d3-tip
+{
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px; /* space around text */
+  background: rgba(0, 0, 0, 0.8); /* background color and transparency */
+  color: #fff; /* color of "Word" inside popup */
+  border-radius: 5px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after
+{
+  box-sizing: border-box;
+  display: inline;
+  font-size: 13 px; /* tip size */
+  width: 100%; /* tip position */
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC"; /* character code for down-pointing triangle */
+  position: absolute;
+  text-align: center; /* tip alignment */
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after
+{
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script>
+
+/* drawing margins, height, width */
+var margin = {top: 20, right: 20, bottom: 60, left: 40},
+var width = 960 - margin.left - margin.right;
+var height = 500 - margin.top - margin.bottom;
+
+var x = d3.scale.ordinal();
+x.rangeRoundBands([0, width], .1);
+
+var y = d3.scale.linear();
+y.range([height, 0]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+
+var tip = d3.tip() /* popup properties : ?, position, data */
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d)
+  {
+    return "<strong>Taille:</strong> <span style='color:red'>" + d.Taille + "</span>";
+  })
+
+var avgTip = d3.tip()
+	.attr("class", "d3-tip")
+	.offset([-10, 0])
+	.html(function(d)
+	{
+		return "<strong>Moyenne:</strong> <span style='color:red'>" + d3.round(mean, 2) + "</span>";
+	})
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g") /* yAxis : markers, numbers... */
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+svg.call(tip);
+svg.call(avgTip);
+
+d3.tsv("tailles.tsv", type,
+  function(error, data)
+  {
+    x.domain(data.map(function(d) { return d.Nom; }));
+    y.domain([[d3.min(data, function(d) { return d.Taille; }) - (d3.max(data, function(d) { return d.Taille; }) - d3.min(data, function(d) { return d.Taille; })) / 2], d3.max(data, function(d) { return d.Taille; }) + (d3.max(data, function(d) { return d.Taille; }) - d3.min(data, function(d) { return d.Taille; })) / 2]); /* yRange */
+
+    svg.append("g") /* draw whole xAxis */
+        .attr("class", "x axis")
+        .attr("transform", "rotate(-90)")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .selectAll("text")  
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", function(d) 
+        { return "rotate(-42)" });
+
+    svg.append("g") /* draw whole yAxis */
+        .attr("class", "y axis")
+        .call(yAxis)
+      	.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Taille");
+
+    svg.selectAll(".bar") /* draw data */
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", function(d) { return x(d.Nom); })
+        .attr("width", x.rangeBand())
+        .attr("y", function(d) { return y(d.Taille); })
+        .attr("height", function(d) { return height - y(d.Taille); })
+        .on('mouseover', tip.show)
+        .on('mouseout', tip.hide)
+
+    mean = d3.mean(data, function(d) { return (d.Taille); })
+    meanY = d3.mean(data, function(d) { return y(d.Taille); })
+
+    svg.append("line")
+      	.attr("x1", 1)
+      	.attr("y1", meanY)
+      	.attr("x2", width)
+      	.attr("y2", meanY)
+      	.attr("stroke-width", 3)
+      	.attr("stroke", "red")
+        .on('mouseover', avgTip.show)
+        .on('mouseout', avgTip.hide)
+
+    svg.append("g") /* draw whole xAxis */
+        .attr("class", "x axis")
+        .attr("transform", "rotate(-90)")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .selectAll("text")  
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", function(d) 
+        { return "rotate(-42)" });
+
+    svg.append("g") /* draw whole yAxis */
+        .attr("class", "y axis")
+        .call(yAxis)
+      	.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Taille");
+
+    svg.selectAll(".bar") /* draw data */
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", function(d) { return x(d.Nom); })
+        .attr("width", x.rangeBand())
+        .attr("y", function(d) { return y(d.Taille); })
+        .attr("height", function(d) { return height - y(d.Taille); })
+        .on('mouseover', tip.show)
+        .on('mouseout', tip.hide)
+
+    mean = d3.mean(data, function(d) { return (d.Taille); })
+    meanY = d3.mean(data, function(d) { return y(d.Taille); })
+
+    svg.append("line")
+      	.attr("x1", 1)
+      	.attr("y1", meanY)
+      	.attr("x2", width)
+      	.attr("y2", meanY)
+      	.attr("stroke-width", 3)
+      	.attr("stroke", "red")
+        .on('mouseover', avgTip.show)
+        .on('mouseout', avgTip.hide)
+  }
+);
+
+function type(d) {
+  d.Taille = +d.Taille;
+  return d;
+}
+
+</script>
+
